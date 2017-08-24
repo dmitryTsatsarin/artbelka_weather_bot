@@ -1,0 +1,13 @@
+Django==1.11.4
+arrow==0.10.0
+celery==3.1.25
+django-celery==3.2.1
+django-extensions==1.8.1
+django-grappelli==2.10.1
+django-logutils==0.4.3
+easy-thumbnails==2.4.1
+Pillow==4.2.1
+psycopg2==2.7.3
+pyTelegramBotAPI==3.2.0
+raven==6.1.0
+selenium==3.5.0
