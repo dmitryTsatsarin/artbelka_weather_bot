@@ -10,7 +10,7 @@ from django.db.models.functions import Concat
 from telebot import types, apihelper
 
 from weather_bot_app.helpers import TextCommandEnum, send_mail_to_the_shop, generate_and_send_discount_product, get_query_dict, create_uri, CacheKey, Smile, CacheAsSession, CacheKeyValue, \
-    TsdRegExp
+    TsdRegExp, CityEnum
 from weather_bot_app.models import Buyer,Bot, BotBuyerMap, MessageLog
 from weather_bot_app.utils import create_shop_telebot
 
@@ -107,15 +107,14 @@ class BotView(object):
         buttons = [
             # внимание, нельзя пробрасывать знак "-" в качестве callback_data (telegram ругается)
             (
-                ('Минск', create_uri(TextCommandEnum.LOCATION, city='Минск')),
-                ('Москва', create_uri(TextCommandEnum.LOCATION, city='Москва')),
+                ('Минск', create_uri(TextCommandEnum.LOCATION, city=CityEnum.MINSK)),
+                ('Москва', create_uri(TextCommandEnum.LOCATION, city=CityEnum.MOSCOW)),
             ),
             (
-                ('Санкт-Петербург', create_uri(TextCommandEnum.LOCATION, city='Питер')),
-                ('Киев', create_uri(TextCommandEnum.LOCATION, city='Киев')),
+                ('Санкт-Петербург', create_uri(TextCommandEnum.LOCATION, city=CityEnum.PITER)),
+                ('Киев', create_uri(TextCommandEnum.LOCATION, city=CityEnum.KIEV)),
             )
         ]
-
 
         for row in buttons:
             city_buttons = []
@@ -133,184 +132,26 @@ class BotView(object):
 
         self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=markup)
 
-    # def handle_faq(self, message):
-    #     faqs = list(FAQ.objects.filter(bot_id=self.bot_id))
-    #     if faqs:
-    #         for faq in faqs:
-    #             question = faq.question
-    #             answer = faq.answer
-    #             text_out = u'%s\n%s' % (question, answer)
-    #             self.shop_telebot.send_message(message.chat.id, text_out)
-    #             if faq.picture:
-    #                 image_file = faq.get_400x400_picture_file()
-    #                 self.shop_telebot.send_photo(self.chat_id, image_file)
-    #     else:
-    #         self.shop_telebot.send_message(message.chat.id, u'Раздел помощи пуст')
-    #
-    # def handle_catalog(self, message):
-    #     catalogs = list(Catalog.objects.filter(bot_id=self.bot_id))
-    #     markup = types.InlineKeyboardMarkup()
-    #     if catalogs:
-    #         for catalog in catalogs:
-    #             order_command = u'/get_catalog?catalog_id=%s' % catalog.id
-    #             products_count = Product.objects.filter(catalog_id=catalog.id, bot_id=self.bot_id, is_visible=True, is_discount=False).count()
-    #             text = u'%s (%s)' % (catalog.name, products_count)
-    #             callback_button = types.InlineKeyboardButton(text=text, callback_data=order_command)
-    #             markup.add(callback_button)
-    #         self.shop_telebot.send_message(self.chat_id, 'Каталоги', reply_markup=markup)
-    #     else:
-    #         self.shop_telebot.send_message(self.chat_id, 'Каталогов нет :(', reply_markup=markup)
-    #
-    # def handle_show_catalog_products(self, call, indirect_call=None):
-    #     limit = 5
-    #
-    #     if indirect_call:
-    #         call_data = indirect_call
-    #     elif call and call.data:
-    #         call_data = call.data
-    #     else:
-    #         # кеш почему-то очищен, покажем просто каталог
-    #         self.handle_catalog(None)
-    #         return
-    #
-    #     query_dict = get_query_dict(call_data)
-    #     catalog_id_str = query_dict.get('catalog_id')
-    #     catalog_id = int(catalog_id_str) if catalog_id_str else None
-    #     offset = int(query_dict.get('offset', 0))
-    #
-    #     if not catalog_id:
-    #         logger.error(u'Каталог не найден (%s)' % call_data)
-    #         self.shop_telebot.send_message(self.chat_id, u'Неккорректная ссылка каталога, выберете другой каталог')
-    #         return
-    #
-    #     self.pseudo_session.set(CacheKey.LAST_CATALOG_URI, call_data)
-    #
-    #     queryset = Product.objects.filter(bot_id=self.bot_id, catalog_id=catalog_id, is_visible=True, is_discount=False).order_by('-id')
-    #     product_count = queryset.count()
-    #
-    #     products = list(queryset[offset:offset + limit])
-    #     # todo: возможно стоит вынести общую часть в отдельные функции
-    #     for product in products:
-    #         image_file = product.get_400x400_picture_file()
-    #         order_command = u'%s%s' % (TextCommandEnum.GET_PRODUCT, product.id)
-    #         caption = u'%s\n%s' % (product.name, product.description)
-    #
-    #         markup = types.InlineKeyboardMarkup()
-    #         callback_button = types.InlineKeyboardButton(text=u"Заказать", callback_data=order_command)
-    #
-    #         # пока не нужно, или удалить потом, или еще что
-    #         # product_question_command = create_uri(TextCommandEnum.QUESTION_ABOUT_PRODUCT, product_id=product.id)
-    #         # product_question_button = types.InlineKeyboardButton(text=u"Задать вопрос по товару", callback_data=product_question_command)
-    #         # markup.add(product_question_button)
-    #
-    #         markup.add(callback_button)
-    #         self.shop_telebot.send_photo(self.chat_id, image_file, caption=caption, reply_markup=markup)
-    #     if product_count > offset + limit:
-    #         new_offset = offset + limit
-    #         more_command = create_uri(TextCommandEnum.GET_CATALOG, catalog_id=catalog_id, offset=new_offset)
-    #         markup = types.InlineKeyboardMarkup()
-    #         rest_amount = product_count - new_offset
-    #         callback_button = types.InlineKeyboardButton(text=u"Показать еще 5 ( %s не показано)" % rest_amount, callback_data=more_command)
-    #         markup.add(callback_button)
-    #         self.shop_telebot.send_message(self.chat_id, u'Показать другие товары?', reply_markup=markup)
-    #     if not products:
-    #         self.shop_telebot.send_message(self.chat_id, u'Каталог пуст')
-    #
-    # def core_handle_more_catalog_discount_products(self, message, data=None):
-    #     limit = 5
-    #
-    #     if data:
-    #         query_dict = get_query_dict(data)
-    #         offset = int(query_dict.get('offset', 0))
-    #     else:
-    #         offset = 0
-    #
-    #     queryset = Product.objects.filter(bot_id=self.bot_id, is_discount=True, is_visible=True).order_by('?')
-    #     product_count = queryset.count()
-    #
-    #     products = list(queryset[offset:offset + limit])
-    #     for product in products:
-    #         generate_and_send_discount_product(product, self.shop_telebot, message)
-    #
-    #     if product_count > offset + limit:
-    #         new_offset = offset + limit
-    #         more_command = create_uri(TextCommandEnum.SALE, offset=new_offset)
-    #         markup = types.InlineKeyboardMarkup()
-    #         rest_amount = product_count - new_offset
-    #         callback_button = types.InlineKeyboardButton(text=u"Показать еще 5 ( %s не показано)" % rest_amount, callback_data=more_command)
-    #         markup.add(callback_button)
-    #         self.shop_telebot.send_message(message.chat.id, u'Показать другие товары?', reply_markup=markup)
-    #
-    #     if not products:
-    #         self.shop_telebot.send_message(message.chat.id, u'Нет товара на скидке')
-    #
-    # def handle_catalog_discount(self, message):
-    #     return self.core_handle_more_catalog_discount_products(message)
-    #
-    # def handle_more_catalog_discount_products(self, call):
-    #     return self.core_handle_more_catalog_discount_products(call.message, call.data)
-    #
-    # #
-    # # def handle_contact(self, message):
-    # #     phone_number = message.contact.phone_number
-    # #     buyer = Buyer.objects.filter(telegram_user_id=message.chat.id).get()
-    # #     buyer.phone = phone_number
-    # #     buyer.save()
-    # #
-    # #     order_id = cache.get('order', version=message.chat.id)
-    # #     order = Order.objects.get(id=order_id)
-    # #
-    # #     text_out = u'Спасибо, ваши контакты (%s) были отправлены менеджеру компании. Ожидайте он свяжется с вами' % phone_number
-    # #     self.shop_telebot.send_message(message.chat.id, text_out, reply_markup=self.menu_markup)
-    # #
-    # #     send_mail_to_the_shop(order)
-    #
-    # def callback_catalog_order(self, call):
-    #     logger.debug('Оформление заказа')
-    #     buyer = Buyer.objects.filter(telegram_user_id=call.message.chat.id).get()
-    #     product_id = int(call.data.lower().replace(u'/get_it_', ''))
-    #     product = Product.objects.filter(id=product_id).get()
-    #
-    #     # дублирование отображения выбранного товара
-    #     text_out = 'Вы хотите заказать:'
-    #     self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
-    #     image_file = product.get_400x400_picture_file()
-    #     caption = u'%s\n%s' % (product.name, product.description)
-    #     markup = types.InlineKeyboardMarkup()
-    #     cancel_callback_button = types.InlineKeyboardButton(text=u"%s Отменить заказ" % Smile.CROSS_MARK, callback_data=TextCommandEnum.BACK_TO_PREVIOUS_CATALOG)
-    #     confirm_order_command = create_uri(TextCommandEnum.GET_PRODUCT_CONFIRM, product_id=product_id)
-    #     confirm_callback_button = types.InlineKeyboardButton(text=u"%s Подтвердить заказ" % Smile.WHITE_HEAVY_CHECK_MARK, callback_data=confirm_order_command)
-    #     markup.add(cancel_callback_button)
-    #     markup.add(confirm_callback_button)
-    #     self.shop_telebot.send_photo(call.message.chat.id, image_file, caption=caption, reply_markup=markup)
-    #
-    #     # markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    #     # phone_btn = types.KeyboardButton(u'отправить номер телефона', request_contact=True)
-    #     # back_btn = types.KeyboardButton(u'Назад')
-    #     # markup.add(phone_btn)
-    #     # markup.add(back_btn)
-    #     # cache.set(CacheKey.NEED_PHONE, True, version=call.message.chat.id)
-    #     # text_out = u'*Заказ оформлен* (%s).\n\n Укажите ваш номер телефона и менеджер вам перезвонит' % product.name
-    #     # self.shop_telebot.send_message(call.message.chat.id, text_out, reply_markup=markup, parse_mode='markdown')
-    #
-    # def handle_need_to_enter_phone(self, call):
-    #     query_dict = get_query_dict(call.data)
-    #     product_id = query_dict.get('product_id')
-    #     if product_id:
-    #         self.pseudo_session.set(CacheKey.PRODUCT_ID, product_id)
-    #         text_out = u'Введите ваш номер телефона в формате "код_страны код_оператора телефон". Пример: 7 495 1234567'
-    #         self.shop_telebot.send_message(self.chat_id, text_out)
-    #         self.pseudo_session.set(CacheKey.NEED_PHONE, True)
-    #     else:
-    #         text_out = u'Похоже либо вы выбрали товар, либо у нас произошел сбой. Попробуйте повторить'
-    #         self.shop_telebot.send_message(self.chat_id, text_out)
-    #
-    # def handle_back_to_previous_catalog(self, call):
-    #     text_out = u'Возврат к товарам'
-    #     self.shop_telebot.send_message(call.message.chat.id, text_out, reply_markup=self.menu_markup)
-    #     last_catalog_uri = self.pseudo_session.get(CacheKey.LAST_CATALOG_URI)
-    #     self.handle_show_catalog_products(None, indirect_call=last_catalog_uri)
-    #
+
+    def handle_save_city(self, call):
+        call_data = call.data
+        query_dict = get_query_dict(call_data)
+        city = query_dict.get('city')
+        if not CityEnum.is_this_city_exist(city):
+            logger.error('Неизвестный город: %s' % city)
+            return
+
+
+        buyer = Buyer.objects.get(telegram_user_id=self.chat_id)
+        buyer.city = city
+        buyer.save()
+
+        text_out = u'Отлично, выбран "%s". Я запомнил и буду показывать погоду для этого города' % city
+        self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
+
+
+
+
     def handle_send_message_to_administator_preview_back(self, message):
         text_out = u'Возврат в начало'
         self.shop_telebot.send_message(message.chat.id, text_out, reply_markup=self.menu_markup)

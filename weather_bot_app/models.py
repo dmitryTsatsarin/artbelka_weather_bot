@@ -8,6 +8,8 @@ import uuid
 
 from easy_thumbnails.fields import ThumbnailerImageField
 
+from weather_bot_app.helpers import CityEnum
+
 
 def rename_and_upload_path(instance, filename):
     _, ext = splitext(filename)
@@ -68,6 +70,7 @@ class Buyer(models.Model):
     last_name = models.CharField(max_length=255, default='')
     phone = models.CharField(max_length=50, null=True)
     telegram_user_id = models.BigIntegerField(null=True)
+    city = models.CharField(choices=CityEnum.for_choice(), default=CityEnum.MINSK, max_length=255)
 
     @property
     def full_name(self):

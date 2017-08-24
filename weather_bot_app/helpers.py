@@ -9,7 +9,7 @@ from django.template import loader
 from django.utils.http import urlencode
 from telebot import types
 
-from weather_bot_app.models import Bot
+
 
 __author__ = 'forward'
 
@@ -22,6 +22,8 @@ from django.conf import settings
 
 
 def initialize_all_webhooks():
+    from weather_bot_app.models import Bot
+
     print 'Инициализация начата'
     bots = list(Bot.objects.all())
     for bot in bots:
@@ -36,6 +38,8 @@ def initialize_all_webhooks():
 
 
 def initialize_one_webhook(bot_name):
+    from weather_bot_app.models import Bot
+
     print 'Инициализация начата'
     bot = Bot.objects.filter(name=bot_name).get()
     shop_telebot = create_shop_telebot(bot.telegram_token)
@@ -102,7 +106,25 @@ class Smile(object):
     WHITE_HEAVY_CHECK_MARK = u"\U00002705"
 
 
-class TextCommandEnum(object):
+class ChoiceEnum(object):
+
+    @classmethod
+    def for_choice(cls):
+        return [(v, k) for k, v in cls.__dict__.iteritems() if k.isupper()]
+
+    @classmethod
+    def values(cls):
+        return [v for k, v in cls.__dict__.iteritems() if k.isupper()]
+
+    @classmethod
+    def get_name(cls, value):
+        for k, v in cls.__dict__.iteritems():
+            if v == value and k.isupper():
+                return k
+        raise ValueError('%s is not defined' % value)
+
+
+class TextCommandEnum(ChoiceEnum):
     #GET_CATALOG = u'/get_catalog'
     #GET_PRODUCT = u'/get_it_'
     #GET_PRODUCT_CONFIRM = u'/get_it2_'
@@ -121,6 +143,15 @@ class TextCommandEnum(object):
     LOCATION = u'/location'
 
 
+class CityEnum(ChoiceEnum):
+    MINSK = 'minsk'
+    MOSCOW = 'moscow'
+    PITER = 'piter'
+    KIEV = 'kiev'
+
+    @classmethod
+    def is_this_city_exist(cls, city):
+        return city.lower() in cls.__dict__.values()
 
 
 class KeyValue(object):
