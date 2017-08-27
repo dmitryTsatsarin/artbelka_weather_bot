@@ -70,7 +70,11 @@ class Buyer(models.Model):
     last_name = models.CharField(max_length=255, default='')
     phone = models.CharField(max_length=50, null=True)
     telegram_user_id = models.BigIntegerField(null=True)
-    city = models.CharField(choices=CityEnum.for_choice(), default=CityEnum.MINSK, max_length=255)
+
+    city = models.CharField(choices=CityEnum.for_choice(), default=CityEnum.MOSCOW, max_length=255)
+    is_schedule_enabled = models.BooleanField(default=False)
+    hour = models.IntegerField(default=0)
+    minute = models.IntegerField(default=0)
 
     @property
     def full_name(self):
@@ -78,6 +82,12 @@ class Buyer(models.Model):
 
     def __unicode__(self):
         return u'%s %s %s' % (self.first_name, self.last_name, self.telegram_user_id)
+
+
+class WeatherScheduler(models.Model):
+    buyer = models.OneToOneField(Buyer)
+    next_notification_at = models.DateTimeField()
+
 
 #
 # class Order(models.Model):

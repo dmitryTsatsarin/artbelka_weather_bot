@@ -137,7 +137,8 @@ class TextCommandEnum(ChoiceEnum):
     CLOSE_QUESTION_MODE = u'закончить разговор'
 
     WEATHER = u'%s Погода' % Smile.HANDBAG
-    SCHEDULE = u'%s Расписание' % Smile.HIGH_VOLTAGE
+    SCHEDULE = u'%s Установить расписание' % Smile.HIGH_VOLTAGE
+    SCHEDULE_SAVE = u'/schedule_save'
     SETTINGS = u'%s Настройки (выбрать город)' % Smile.DELIVERY_TRUCK
 
     LOCATION = u'/location'
@@ -149,9 +150,21 @@ class CityEnum(ChoiceEnum):
     PITER = 'piter'
     KIEV = 'kiev'
 
+    timezones = {
+        MINSK: 'Europe/Minsk',
+        MOSCOW: 'Europe/Moscow',
+        PITER: 'Europe/Moscow',
+        KIEV: 'Europe/Kiev'
+    }
+
     @classmethod
     def is_this_city_exist(cls, city):
         return city.lower() in cls.__dict__.values()
+
+    @classmethod
+    def get_time_zone(cls, city):
+        return cls.timezones[city]
+
 
 
 class KeyValue(object):

@@ -2,6 +2,7 @@
 import logging
 import re
 
+import arrow
 from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import send_mail
@@ -11,8 +12,8 @@ from telebot import types, apihelper
 
 from weather_bot_app.helpers import TextCommandEnum, send_mail_to_the_shop, generate_and_send_discount_product, get_query_dict, create_uri, CacheKey, Smile, CacheAsSession, CacheKeyValue, \
     TsdRegExp, CityEnum
-from weather_bot_app.models import Buyer,Bot, BotBuyerMap, MessageLog
-from weather_bot_app.utils import create_shop_telebot
+from weather_bot_app.models import Buyer, Bot, BotBuyerMap, MessageLog, WeatherScheduler
+from weather_bot_app.utils import create_shop_telebot, str2bool
 
 logger = logging.getLogger(__name__)
 to_log = logger.info
@@ -101,9 +102,67 @@ class BotView(object):
         text_out = 'Сегодня у нас бла бла бла бла погода'
         self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
 
+
+    def handle_schedule(self, message):
+        text_out = 'Задать расписание автоматического уведомления о погоде (рекомендую на 07:00)'
+
+        buttons = [
+            # внимание, нельзя пробрасывать знак "-" в качестве callback_data (telegram ругается)
+            (
+                ('06:00', create_uri(TextCommandEnum.SCHEDULE_SAVE, hour=6)),
+                ('07:00', create_uri(TextCommandEnum.SCHEDULE_SAVE, hour=7)),
+            ),
+            (
+                ('08:00', create_uri(TextCommandEnum.SCHEDULE_SAVE, hour=8)),
+                ('09:00', create_uri(TextCommandEnum.SCHEDULE_SAVE, hour=9)),
+            ),
+            (
+                ('Отключить ежедневное уведомление', create_uri(TextCommandEnum.SCHEDULE_SAVE, is_schedule_enabled=False)),
+            ),
+        ]
+
+        markup = self.shop_telebot.create_buttons(buttons)
+        self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=markup)
+
+    def handle_schedule_save(self, call):
+        call_data = call.data
+        query_dict = get_query_dict(call_data)
+        is_schedule_enabled = query_dict.get('is_schedule_enabled')
+        hour = query_dict.get('hour')
+        buyer = Buyer.objects.get(telegram_user_id=self.chat_id)
+        if is_schedule_enabled and str2bool(is_schedule_enabled) is False:
+            buyer.is_schedule_enabled = False
+            buyer.save()
+            text_out = u'Хорошо. Я отключил ежедные обновления погоды.'
+            self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
+        elif hour:
+            hour = int(hour)
+            if hour > 24 or hour < 0:
+                logger.error('Часы указаны некорректно %s' % hour)
+                text_out = u'Указано некорректное время'
+                self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
+            else:
+                buyer.hour = hour
+                buyer.save()
+
+                timezone = CityEnum.get_time_zone(buyer.city)
+                tomorrow = arrow.now(tz=timezone).shift(days=1).replace(hour=buyer.hour, minute=buyer.minute, second=0)
+
+                WeatherScheduler.objects.get_or_create(
+                    buyer=buyer,
+                    defaults=dict(
+                        next_notification_at=tomorrow.datetime
+                    )
+                )
+                time_f = '%02d:%02d' % (buyer.hour, buyer.minute)
+                text_out = u'Отлично, я запомнил. Ты будешь знать самый последний прогноз погоды в %s каждый день ). \n' \
+                           u'Следующий раз я пришлю свежий прогноз погоды в %s (%s)' % (time_f, tomorrow, buyer.city)
+
+                self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
+
+
     def handle_choose_city(self, message):
         text_out = u'На данный момент у меня есть информация только об этих городах:'
-        markup = types.InlineKeyboardMarkup()
         buttons = [
             # внимание, нельзя пробрасывать знак "-" в качестве callback_data (telegram ругается)
             (
@@ -115,13 +174,7 @@ class BotView(object):
                 ('Киев', create_uri(TextCommandEnum.LOCATION, city=CityEnum.KIEV)),
             )
         ]
-
-        for row in buttons:
-            city_buttons = []
-            for city, uri in row:
-                city_buttons.append(types.InlineKeyboardButton(text=city, callback_data=uri))
-            markup.row(*city_buttons)
-
+        markup = self.shop_telebot.create_buttons(buttons)
         self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=markup)
 
         text_out = "Можно нажать на кнопочку, и предложить добавить еще какой-нибудь город )"
@@ -141,15 +194,12 @@ class BotView(object):
             logger.error('Неизвестный город: %s' % city)
             return
 
-
         buyer = Buyer.objects.get(telegram_user_id=self.chat_id)
         buyer.city = city
         buyer.save()
 
         text_out = u'Отлично, выбран "%s". Я запомнил и буду показывать погоду для этого города' % city
         self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
-
-
 
 
     def handle_send_message_to_administator_preview_back(self, message):

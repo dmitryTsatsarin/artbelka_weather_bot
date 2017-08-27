@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
+
 __author__ = 'forward'
 import arrow
 from telebot import TeleBot
 from django.conf import settings
 from django.core.cache import cache
 import logging
+from telebot import types, apihelper
 
 logger = logging.getLogger(__name__)
+
 
 class ShopTeleBot(TeleBot, object):
     def __init__(self, token, threaded=False, skip_pending=False):
@@ -73,8 +76,37 @@ class ShopTeleBot(TeleBot, object):
 
         super(ShopTeleBot, self)._exec_task(*args, **kwargs)
 
+    def create_buttons(self, buttons):
+        """
+
+        :param buttons: has such structure
+         [
+            (   # row
+                (button_title, uri),
+                (button_title, uri)
+            ),
+            (  # row
+            ...
+            )
+         ]
+        :return markup: 
+        """
+
+        markup = types.InlineKeyboardMarkup()
+
+        for row in buttons:
+            city_buttons = []
+            for city, uri in row:
+                city_buttons.append(types.InlineKeyboardButton(text=city, callback_data=uri))
+            markup.row(*city_buttons)
+        return markup
+
 
 def create_shop_telebot(token):
     bot = ShopTeleBot(token)
     return bot
+
+
+def str2bool(v):
+  return v.lower() in ("yes", "true")
 

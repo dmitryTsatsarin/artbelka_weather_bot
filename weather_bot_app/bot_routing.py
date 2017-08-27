@@ -32,9 +32,11 @@ def initialize_bot_with_routing2(token, chat_id):
     bv.shop_telebot.simple_message_handler(commands=['start', ], handler=bv.handle_start_help)
     bv.shop_telebot.simple_message_handler(func=lambda message: message.text.lower().startswith(TextCommandEnum.WEATHER.lower()), content_types=['text'], handler=bv.handle_weather_now)
     bv.shop_telebot.simple_message_handler(func=lambda message: message.text.lower().startswith(TextCommandEnum.SETTINGS.lower()), content_types=['text'], handler=bv.handle_choose_city)
+    bv.shop_telebot.simple_message_handler(func=lambda message: message.text.lower().startswith(TextCommandEnum.SCHEDULE.lower()), content_types=['text'], handler=bv.handle_schedule)
     bv.shop_telebot.simple_message_handler(func=lambda message: message.text.lower().startswith(TextCommandEnum.QUESTION_TO_ADMIN.lower()), content_types=['text'], handler=bv.handle_send_message_to_administator_preview)
 
     bv.shop_telebot.simple_callback_query_handler(func=lambda call: call.data.lower().startswith(TextCommandEnum.LOCATION), handler=bv.handle_save_city)
+    bv.shop_telebot.simple_callback_query_handler(func=lambda call: call.data.lower().startswith(TextCommandEnum.SCHEDULE_SAVE), handler=bv.handle_schedule_save)
 
     bv.shop_telebot.simple_message_handler(func=if_is_it_qestion_mode, content_types=['text'], handler=bv.handle_question_to_bot_support)
 
