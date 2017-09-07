@@ -1,24 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.contrib import admin
-
-# Register your models here.
-
-
-# -*- coding: utf-8 -*-
 from django import forms
-from django.db import models
 from django.contrib import admin
 
-from easy_thumbnails.widgets import ImageClearableFileInput
-from easy_thumbnails.fields import ThumbnailerField
-
-from weather_bot_app.models import Buyer, PostponedPost, PostponedPostResult, BotAdministratorProfile, Bot, BotBuyerMap, MessageLog
+from weather_bot_app.models import Buyer, Bot, BotBuyerMap, MessageLog
 
 
 class GetBotMixin(object):
-
     def get_bot(self, request):
         # выделено в отдельный метод, т.к. мы работаем с одним пользователем на бота, а в будущем пока не понятно
         bot = Bot.objects.filter(administrator=request.user).get()
@@ -40,64 +29,9 @@ class CustomModelAdmin(admin.ModelAdmin, GetBotMixin):
         bot = self.get_bot(request)
         return qs.filter(bot=bot)
 
-    # def get_form(self, request, obj=None, **kwargs):
-    #     form = super(CustomModelAdmin, self).get_form(request, obj, **kwargs)
-    #     if not request.user.is_superuser:
-    #         bot = self.get_bot(request)
-    #         if form.base_fields.get('catalog'):
-    #             form.base_fields['catalog'].queryset = Catalog.objects.filter(bot=bot)
-    #         if form.base_fields.get('product'):
-    #             form.base_fields['product'].queryset = Product.objects.filter(bot=bot)
-    #     return form
-
-
-# class ProductAdmin(CustomModelAdmin):
-#     list_display = ['name', 'id', 'is_visible', 'description', 'vendor_code', 'catalog']
-#     fields = ('name', 'description', 'picture', 'catalog', 'is_discount', 'is_visible', 'vendor_code')
-#
-#     formfield_overrides = {
-#         ThumbnailerField: {'widget': ImageClearableFileInput },
-#     }
-#
-#     def get_form(self, request, obj=None, **kwargs):
-#         form = super(self.__class__, self).get_form(request, obj, **kwargs)
-#         if not request.user.is_superuser:
-#             bot = self.get_bot(request)
-#             form.base_fields['catalog'].queryset = Catalog.objects.filter(bot=bot)
-#         return form
-
-
-class PostponedPostAdmin(CustomModelAdmin):
-
-    formfield_overrides = {
-        ThumbnailerField: {'widget': ImageClearableFileInput},
-    }
-
-
-
-class PostponedPostResultAdmin(admin.ModelAdmin):
-    readonly_fields = ['is_sent', 'buyer', 'postponed_post']
-
-#
-# class OrderAdmin(admin.ModelAdmin):
-#     readonly_fields = ['product', 'buyer']
-
 
 class BuyerAdmin(admin.ModelAdmin):
     pass
-
-
-# class FeedbackAdmin(CustomModelAdmin):
-#
-#     formfield_overrides = {
-#         models.TextField: {'widget': forms.Textarea(attrs={'readonly':'readonly'})}
-#     }
-#     readonly_fields = ['buyer']
-#     # на данный момент нельзя сделать фейковый фидбек через админку, что правильно. Пока сделал через read only,может придумать что-нибудь другое
-
-#
-# class CatalogAdmin(CustomModelAdmin):
-#     list_display = ['name', 'id']
 
 
 class BotAdministratorProfileAdmin(admin.ModelAdmin):
@@ -123,10 +57,8 @@ class BotAdmin(admin.ModelAdmin):
         return qs.filter(administrator=request.user)
 
 
-
 class BotBuyerMapAdmin(admin.ModelAdmin):
     list_display = ['__str__', 'dialog_with_support']
-
 
 
 class MessageLogAdmin(admin.ModelAdmin):
@@ -134,9 +66,6 @@ class MessageLogAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Buyer, BuyerAdmin)
-admin.site.register(PostponedPost, PostponedPostAdmin)
-admin.site.register(PostponedPostResult, PostponedPostResultAdmin)
 admin.site.register(Bot, BotAdmin)
 admin.site.register(BotBuyerMap, BotBuyerMapAdmin)
 admin.site.register(MessageLog, MessageLogAdmin)
-
