@@ -2,13 +2,12 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from django.contrib.auth.models import User, Group
+from django.contrib.auth import get_user_model
 from os.path import splitext
 import uuid
-
-from easy_thumbnails.fields import ThumbnailerImageField
-
 from weather_bot_app.helpers import CityEnum
+
+User = get_user_model()
 
 
 def rename_and_upload_path(instance, filename):
@@ -35,25 +34,6 @@ def faq_path(instance, filename):
     return 'faq/%s%s' % (base_filename, ext)
 
 
-# class Product(models.Model):
-#     bot = models.ForeignKey('Bot')
-#     name = models.CharField(max_length=255)
-#     description = models.TextField()
-#     picture = ThumbnailerImageField(upload_to=rename_and_upload_path)
-#     price = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-#     catalog = models.ForeignKey('Catalog', null=True, blank=True)
-#     is_discount = models.BooleanField(default=False)
-#     is_visible = models.BooleanField(default=True, help_text='Показывать товар покупателю или нет')
-#     vendor_code = models.CharField(max_length=255, blank=True, null=True, help_text="Артикул товара", verbose_name='Артикул')
-#
-#     def __unicode__(self):
-#         return self.name
-#
-#     def get_400x400_picture_file(self):
-#         image_file = open(self.picture['400x400'].path)
-#         return image_file
-
-
 class BotBuyerMap(models.Model):
     buyer = models.ForeignKey('Buyer', related_name='bot_buyer_map_rel')
     bot = models.ForeignKey('Bot', related_name='bot_buyer_map_rel')
@@ -72,7 +52,6 @@ class Buyer(models.Model):
     telegram_user_id = models.BigIntegerField(null=True)
 
     city = models.CharField(choices=CityEnum.for_choice(), default=CityEnum.MOSCOW, max_length=255)
-    is_schedule_enabled = models.BooleanField(default=False)
     hour = models.IntegerField(default=0)
     minute = models.IntegerField(default=0)
 
@@ -84,63 +63,29 @@ class Buyer(models.Model):
         return u'%s %s %s' % (self.first_name, self.last_name, self.telegram_user_id)
 
 
+class EnabledManager(models.Manager):
+    def get_queryset(self):
+        return super(EnabledManager, self).get_queryset().filter(is_schedule_enabled=True)
+
+
 class WeatherScheduler(models.Model):
-    buyer = models.OneToOneField(Buyer)
+    buyer = models.OneToOneField(Buyer, related_name='weather_scheduler_rel')
     next_notification_at = models.DateTimeField()
+    is_schedule_enabled = models.BooleanField(default=False)
+
+    objects = models.Manager()
+    qs_enabled = EnabledManager()
 
 
-#
-# class Order(models.Model):
-#     product = models.ForeignKey(Product)
-#     buyer = models.ForeignKey(Buyer)
-#
-#     def __unicode__(self):
-#         return u'%s' % self.id
-
-
-# class Feedback(models.Model):
-#     bot = models.ForeignKey('Bot')
-#     buyer = models.ForeignKey(Buyer)
-#     description = models.TextField()
-#     created_at= models.DateTimeField(auto_now_add=True)
-#
-#     def __unicode__(self):
-#         return u'%s' % self.description
-
-
-class PostponedPost(models.Model):
-    bot = models.ForeignKey('Bot')
-    title = models.CharField(max_length=100, verbose_name=u'Заголовок')
-    description = models.TextField(verbose_name=u'Описание преложения/новости')
-    picture = ThumbnailerImageField(upload_to=postponed_post_path, null=True, blank=True, verbose_name=u'Фото для новости')
-    #product = models.ForeignKey(Product, verbose_name=u'Товар', null=True, blank=True)
-    send_at = models.DateTimeField(verbose_name=u'Отправить в')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def get_400x400_picture_file(self):
-        image_file = open(self.picture['400x400'].path)
-        return image_file
-
-    def __unicode__(self):
-        return u'%s' % self.title
-
-
-class PostponedPostResult(models.Model):
+class WeatherSchedulerResult(models.Model):
     buyer = models.ForeignKey(Buyer)
-    postponed_post = models.ForeignKey(PostponedPost)
+    #weather_scheduler = models.ForeignKey(WeatherScheduler)
+    notification_at = models.DateTimeField()
     is_sent = models.BooleanField(default=False, verbose_name=u'Отправлено')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
         return u'%s' % self.id
-
-
-# class Catalog(models.Model):
-#     bot = models.ForeignKey('Bot')
-#     name = models.CharField(max_length=100)
-#
-#     def __unicode__(self):
-#         return u'%s' % self.name
 
 
 class BotAdministratorProfile(models.Model):
@@ -164,6 +109,8 @@ class Bot(models.Model):
         return u'%s' % self.name
 
     def save(self, *args, **kwargs):
+        from django.contrib.auth.models import Group
+
         group_name = 'bot_administrator_group'
         group = Group.objects.filter(name=group_name).get()
         if not self.administrator:
@@ -195,17 +142,4 @@ class MessageLog(models.Model):
 #     time_in_queue =
 #     full_time =
 
-
-# class FAQ(models.Model):
-#     bot = models.ForeignKey(Bot)
-#     question = models.CharField(max_length=255)
-#     answer = models.CharField(max_length=1000)
-#     picture = ThumbnailerImageField(null=True, blank=True, upload_to=faq_path)
-#
-#     def get_400x400_picture_file(self):
-#         image_file = open(self.picture['400x400'].path)
-#         return image_file
-#
-#     def __unicode__(self):
-#         return u'%s' % self.question
 

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.11/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
+from celery.schedules import crontab
 
 __author__ = 'forward'
 
@@ -41,8 +42,10 @@ MEDIA_URL = '/media/'
 INSTALLED_APPS = [
     'grappelli',
     'django.contrib.admin',
-    'django.contrib.auth',
     'django.contrib.contenttypes',
+    'django.contrib.sites',
+    'django.contrib.auth',
+
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -52,6 +55,7 @@ INSTALLED_APPS = [
     'easy_thumbnails',
     'weather_bot_app'
 ]
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -155,12 +159,12 @@ CACHES = {
 }
 
 
-# CELERYBEAT_SCHEDULE = {
-#     'post_by_schedule': {
-#         'task': 'shop_bot_app.tasks.post_by_schedule',
-#         'schedule': crontab(minute="*"),
-#     },
-# }
+CELERYBEAT_SCHEDULE = {
+    'post_by_schedule': {
+        'task': 'weather_bot_app.tasks.post_by_schedule',
+        'schedule': crontab(minute="*"),
+    },
+}
 
 BOT_REQUEST_TIME_THRESHOLD = 5 # уведомлять о всех запросах дольше 5 секунд
 LOGUTILS_REQUEST_TIME_THRESHOLD = BOT_REQUEST_TIME_THRESHOLD
@@ -182,3 +186,4 @@ THUMBNAIL_ALIASES = {
 THUMBNAIL_WIDGET_OPTIONS = {'size': (400, 400), 'crop': 'scale'}
 
 ADMIN_TELEGRAM_DEFAULT_CHAT_ID = 53986880 # мой id по умолчанию
+COMMON_WEATHER_BOT_NAME = 'CommonWeatherBot'

@@ -131,8 +131,8 @@ class BotView(object):
         hour = query_dict.get('hour')
         buyer = Buyer.objects.get(telegram_user_id=self.chat_id)
         if is_schedule_enabled and str2bool(is_schedule_enabled) is False:
-            buyer.is_schedule_enabled = False
-            buyer.save()
+            buyer.weather_scheduler_rel.is_schedule_enabled = False
+            buyer.weather_scheduler_rel.save()
             text_out = u'Хорошо. Я отключил ежедные обновления погоды.'
             self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
         elif hour:

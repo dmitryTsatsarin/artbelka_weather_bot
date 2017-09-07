@@ -7,7 +7,7 @@ from celery import Celery
 from django.conf import settings
 
 # set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'telegram_shop_bot.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'artbelka_weather_bot.settings')
 
 app = Celery('artbelka_weather_bot')
 app.config_from_object('django.conf:settings')

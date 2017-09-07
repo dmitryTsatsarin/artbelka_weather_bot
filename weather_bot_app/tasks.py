@@ -8,39 +8,70 @@ from django.conf import settings
 
 from weather_bot_app.bot_routing import initialize_bot_with_routing2
 from weather_bot_app.logic import send_schedule_product
-from weather_bot_app.models import Bot
-from weather_bot_app.models import PostponedPost, Buyer, PostponedPostResult
+from weather_bot_app.models import Bot, WeatherScheduler, WeatherSchedulerResult
+from weather_bot_app.models import Buyer
 from artbelka_weather_bot.celery import app
-from telebot import apihelper
+from telebot import apihelper, types
 import json
 
 #import botan
+from weather_bot_app.utils import create_shop_telebot
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task
 def post_by_schedule(dry_run=False):
-    # огнаничим что посты нельзя создавать больше чем на 2 недели вперед
-    start_datetime = arrow.now().replace(days=-14).datetime
 
-    postponed_posts = list(PostponedPost.objects.filter(created_at__gte=start_datetime, send_at__lte=arrow.now().datetime))
-    # todo: опимизировать все в один запрос (но пока несрочно)
-    for postponed_post in postponed_posts:
-        buyers = list(Buyer.objects.filter(bot_buyer_map_rel__bot_id=postponed_post.bot_id, bot_buyer_map_rel__created_at__lte=postponed_post.created_at).distinct())
-        for buyer in buyers:
-            if not PostponedPostResult.objects.filter(buyer=buyer, postponed_post=postponed_post).exists():
-                try:
-                    if not dry_run:
-                        send_schedule_product(buyer.telegram_user_id, postponed_post)
-                    PostponedPostResult.objects.create(buyer=buyer, postponed_post=postponed_post, is_sent=True)
-                    logger.info(u'Запущен PostponedPost с id=%s к buyer=(%s, %s)' % (postponed_post.id, buyer.id, buyer.full_name))
-                except apihelper.ApiException as e:
-                    error_msg = 'Forbidden: bot was blocked by the user'
-                    if e.result.status_code == 403 and error_msg in e.result.text:
-                        msg = u'Пользователь %s (id=%s) заблокировал бота' % (buyer.full_name, buyer.telegram_user_id)
-                        logger.info(msg)
-                        # todo: добавить сюда сохранение инфы, блокирован бот или нет
+    # запускаем нотификации в этом часе
+    start_datetime = arrow.now().floor('hour').datetime
+    end_datetime = arrow.now().ceil('hour').datetime
+    if not Bot.objects.filter(name=settings.COMMON_WEATHER_BOT_NAME).exists():
+        logger.error('Bot is not found "%s"' % settings.COMMON_WEATHER_BOT_NAME)
+        return
+
+    bot = Bot.objects.filter(name=settings.COMMON_WEATHER_BOT_NAME).get()
+
+    buyers = list(
+        Buyer.objects.filter(
+            bot_buyer_map_rel__bot=bot,
+            bot_buyer_map_rel__is_blocked_by_user=False,
+            weather_scheduler_rel__is_schedule_enabled=True,
+            weather_scheduler_rel__next_notification_at__range=(start_datetime, end_datetime),
+
+        )
+    )
+    for buyer in buyers:
+        notification_at = buyer.weather_scheduler_rel.next_notification_at
+        PostWeatherTask().apply_async(kwargs=dict(
+            bot_id=bot.id,
+            buyer_id=buyer.id,
+            notification_at=notification_at,
+        ))
+        logger.info(u'Запущен post_by_schedule к buyer=(%s, %s)' % (buyer.id, buyer.full_name))
+        buyer.weather_scheduler_rel.next_notification_at = arrow.get(notification_at).shift(days=1).datetime
+        buyer.weather_scheduler_rel.save()
+
+
+class BotBaseTask(app.Task):
+    shop_telebot = None
+
+    def run(self, bot_id, *args, **kwargs):
+        try:
+            if Bot.objects.filter(id=bot_id).exists():
+                bot = Bot.objects.filter(id=bot_id).get()
+                self.shop_telebot = create_shop_telebot(bot.telegram_token)
+                return self.run_core(*args, **kwargs)
+            else:
+                logger.error('Token "%s" is not found' % bot_id)
+
+        except Exception as e:
+            if settings.DEBUG:
+                logger.debug(e, exc_info=True)
+            else:
+                logger.exception(e)
+                raise
+
 
 
 class CollectorTask(app.Task):
@@ -86,6 +117,39 @@ class CollectorTask(app.Task):
             else:
                 logger.exception(e)
                 raise
+
+
+class PostWeatherTask(BotBaseTask):
+    queue = 'post_weather'
+
+    def send_weather(self, buyer):
+        text_out = u'Отправка погоды. Бла бла бла'
+
+        #image_file = postponed_post.get_400x400_picture_file()
+        caption = u'%s' % text_out # добавить еще больше текста сюда
+        #self.shop_telebot.send_photo(buyer.telegram_user_id, image_file, caption=caption, reply_markup=markup, disable_notification=False)
+        self.shop_telebot.send_message(buyer.telegram_user_id, caption)
+
+    def run_core(self, buyer_id=None, notification_at=None):
+        logger.info(u'PostWeatherTask. Start. buyer_id=%s, notification_at=%s' % (buyer_id, notification_at))
+
+        buyer = Buyer.objects.get(id=buyer_id)
+
+        try:
+            self.send_weather(buyer)
+            WeatherSchedulerResult.objects.create(
+                is_sent=True,
+                buyer=buyer,
+                notification_at=notification_at
+            )
+
+        except apihelper.ApiException as e:
+            error_msg = 'Forbidden: bot was blocked by the user'
+            if e.result.status_code == 403 and error_msg in e.result.text:
+                msg = u'Пользователь %s (id=%s) заблокировал бота' % (buyer.full_name, buyer.telegram_user_id)
+                logger.info(msg)
+                buyer.is_bot_blocked = True
+                buyer.save()
 
 
 # class MetricTask(app.Task):
