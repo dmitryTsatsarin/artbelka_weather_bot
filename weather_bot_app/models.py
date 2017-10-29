@@ -73,6 +73,10 @@ class WeatherPicture(models.Model):
     created_at = models.DateTimeField()
     picture = models.ImageField(null=True)
 
+    def get_picture_file(self):
+        image_file = open(self.picture.path)
+        return image_file
+
 
 class WeatherScheduler(models.Model):
     buyer = models.OneToOneField(Buyer, related_name='weather_scheduler_rel')

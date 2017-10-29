@@ -12,7 +12,7 @@ from telebot import types, apihelper
 
 from weather_bot_app.helpers import TextCommandEnum, get_query_dict, create_uri, CacheKey, Smile, CacheAsSession, CacheKeyValue, \
     TsdRegExp, CityEnum
-from weather_bot_app.models import Buyer, Bot, BotBuyerMap, MessageLog, WeatherScheduler
+from weather_bot_app.models import Buyer, Bot, BotBuyerMap, MessageLog, WeatherScheduler, WeatherPicture
 from weather_bot_app.utils import create_shop_telebot, str2bool
 
 logger = logging.getLogger(__name__)
@@ -99,8 +99,16 @@ class BotView(object):
         self.shop_telebot.send_message(message.chat.id, "Сделайте ваш выбор:", reply_markup=self.menu_markup)
 
     def handle_weather_now(self, message):
-        text_out = 'Сегодня у нас бла бла бла бла погода'
-        self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
+
+        buyer = Buyer.objects.get(telegram_user_id=self.chat_id)
+        weather_picture = WeatherPicture.objects.filter(city=buyer.city, created_at__gte=arrow.now().shift(hours=-24).datetime).order_by('-created_at').first()
+        if weather_picture:
+            image_file = weather_picture.get_picture_file()
+            self.shop_telebot.send_photo(buyer.telegram_user_id, image_file, reply_markup=self.menu_markup)
+        else:
+            text_out = 'К сожалению прогноз погоды для %s не найден' % buyer.city
+            logger.warning(text_out)
+            self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
 
 
     def handle_schedule(self, message):
