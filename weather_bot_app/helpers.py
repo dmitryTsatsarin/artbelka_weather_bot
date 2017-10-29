@@ -67,32 +67,32 @@ def get_webhook_url(token):
     return "%s/webhooks/%s/" % (settings.WEBHOOK_URL_BASE, token)
 
 
-def send_mail_to_the_shop(order):
-
-    shop_administrator_email = order.product.bot.order_email
-    artbelka_administrator_email = settings.EMAIL_SHOP_BOT_ADMIN
-
-    thumb_url = order.product.picture['400x400'].url
-
-    context = {
-        'order_id': order.id,
-        'product_picture': "%s%s" % (settings.WEBSITE_BASE_URL, thumb_url),
-        'product_name': order.product.name,
-        'product_description': order.product.description,
-        'product_price': order.product.price,
-        'buyer_name': '%s %s' % (order.buyer.first_name, order.buyer.last_name),
-        'buyer_phone': order.buyer.phone
-    }
-
-    html_message = loader.render_to_string('order_mail.html', context)
-    text = ''
-    logger.debug('Отправка письма')
-    if shop_administrator_email:
-        send_mail(u'От бота артбелки', text, settings.EMAIL_FULL_ADDRESS, [shop_administrator_email], html_message=html_message)
-    else:
-        logger.warning(u'Осуществлен заказ id=%s, но не указан email для заказов. Нужно срочно узнать кто владелец бота' % order.id)
-    send_mail(u'От бота артбелки', text, settings.EMAIL_FULL_ADDRESS, [artbelka_administrator_email], html_message=html_message)
-    logger.debug('письмо отправлено')
+# def send_mail_to_the_shop(order):
+#
+#     shop_administrator_email = order.product.bot.order_email
+#     artbelka_administrator_email = settings.EMAIL_SHOP_BOT_ADMIN
+#
+#     thumb_url = order.product.picture['400x400'].url
+#
+#     context = {
+#         'order_id': order.id,
+#         'product_picture': "%s%s" % (settings.WEBSITE_BASE_URL, thumb_url),
+#         'product_name': order.product.name,
+#         'product_description': order.product.description,
+#         'product_price': order.product.price,
+#         'buyer_name': '%s %s' % (order.buyer.first_name, order.buyer.last_name),
+#         'buyer_phone': order.buyer.phone
+#     }
+#
+#     html_message = loader.render_to_string('order_mail.html', context)
+#     text = ''
+#     logger.debug('Отправка письма')
+#     if shop_administrator_email:
+#         send_mail(u'От бота артбелки', text, settings.EMAIL_FULL_ADDRESS, [shop_administrator_email], html_message=html_message)
+#     else:
+#         logger.warning(u'Осуществлен заказ id=%s, но не указан email для заказов. Нужно срочно узнать кто владелец бота' % order.id)
+#     send_mail(u'От бота артбелки', text, settings.EMAIL_FULL_ADDRESS, [artbelka_administrator_email], html_message=html_message)
+#     logger.debug('письмо отправлено')
 
 
 class Smile(object):
@@ -157,6 +157,13 @@ class CityEnum(ChoiceEnum):
         KIEV: 'Europe/Kiev'
     }
 
+    grab_map = {
+        MINSK: 'http://rp5.by/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D0%B2_%D0%9C%D0%B8%D0%BD%D1%81%D0%BA%D0%B5,_%D0%91%D0%B5%D0%BB%D0%B0%D1%80%D1%83%D1%81%D1%8C',
+        MOSCOW: 'http://rp5.by/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D0%B2_%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B5_(%D1%86%D0%B5%D0%BD%D1%82%D1%80,_%D0%91%D0%B0%D0%BB%D1%87%D1%83%D0%B3)',
+        PITER: 'http://rp5.by/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D0%B2_%D0%A1%D0%B0%D0%BD%D0%BA%D1%82-%D0%9F%D0%B5%D1%82%D0%B5%D1%80%D0%B1%D1%83%D1%80%D0%B3%D0%B5',
+        KIEV: 'http://rp5.by/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D0%B2_%D0%9A%D0%B8%D0%B5%D0%B2%D0%B5,_%D0%A3%D0%BA%D1%80%D0%B0%D0%B8%D0%BD%D0%B0',
+    }
+
     @classmethod
     def is_this_city_exist(cls, city):
         return city.lower() in cls.__dict__.values()
@@ -164,7 +171,6 @@ class CityEnum(ChoiceEnum):
     @classmethod
     def get_time_zone(cls, city):
         return cls.timezones[city]
-
 
 
 class KeyValue(object):
@@ -216,16 +222,16 @@ def get_request_data(request):
     return request_data
 
 
-def generate_and_send_discount_product(product, shop_telebot, message):
-    image_file = ImageFile(product.picture)
-    order_command = u'/get_it_%s' % product.id
-    caption = u'%s\n%s\nТОРОПИТЕСЬ ТОВАР НА СКИДКЕ' % (product.name, product.description)
-
-    markup = types.InlineKeyboardMarkup()
-    callback_button = types.InlineKeyboardButton(text=u"Заказать", callback_data=order_command)
-    markup.add(callback_button)
-
-    shop_telebot.send_photo(message.chat.id, image_file, caption=caption, reply_markup=markup)
+# def generate_and_send_discount_product(product, shop_telebot, message):
+#     image_file = ImageFile(product.picture)
+#     order_command = u'/get_it_%s' % product.id
+#     caption = u'%s\n%s\nТОРОПИТЕСЬ ТОВАР НА СКИДКЕ' % (product.name, product.description)
+#
+#     markup = types.InlineKeyboardMarkup()
+#     callback_button = types.InlineKeyboardButton(text=u"Заказать", callback_data=order_command)
+#     markup.add(callback_button)
+#
+#     shop_telebot.send_photo(message.chat.id, image_file, caption=caption, reply_markup=markup)
 
 
 def get_query_dict(uri):

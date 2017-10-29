@@ -7,8 +7,9 @@ from celery import shared_task
 from django.conf import settings
 
 from weather_bot_app.bot_routing import initialize_bot_with_routing2
+from weather_bot_app.helpers import CityEnum
 from weather_bot_app.logic import send_schedule_product
-from weather_bot_app.models import Bot, WeatherScheduler, WeatherSchedulerResult
+from weather_bot_app.models import Bot, WeatherScheduler, WeatherSchedulerResult, WeatherPicture
 from weather_bot_app.models import Buyer
 from artbelka_weather_bot.celery import app
 from telebot import apihelper, types
@@ -170,13 +171,6 @@ class PostWeatherTask(BotBaseTask):
 class GetWeatherTask(CommonBaseTask):
     queue = 'get_weather'
 
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        wrong_wkhtmltoimage_error = 'Exit with code 1 due to network error: HostNotFoundError'
-        if wrong_wkhtmltoimage_error in exc.message:
-            logger.info('Неверная ошибка wkhtmltoimage с запятой в урле: %s' % wrong_wkhtmltoimage_error)
-            return
-        return super(GetWeatherTask, self).on_failure(exc, task_id, args, kwargs, einfo)
-
     def run_core(self, buyer_id=None, notification_at=None):
         options = {
             'format': 'png',
@@ -187,9 +181,24 @@ class GetWeatherTask(CommonBaseTask):
             'javascript-delay': '1000',
         }
 
-        url = 'http://rp5.by/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D0%B2_%D0%9C%D0%B8%D0%BD%D1%81%D0%BA%D0%B5,_%D0%91%D0%B5%D0%BB%D0%B0%D1%80%D1%83%D1%81%D1%8C'
-        result = imgkit.from_url(url, '/tmp/out.png', options=options)
-        return result
+        cities = CityEnum.values()
+        for city in cities:
+            print 'Вытаскиваем информацию для %s' % city
+            url = CityEnum.grab_map[city]
+            now = arrow.now()
+            filename = '%s_%s.%s' % (city, now.isoformat(), options['format'])
+            fullfilename = '%s/%s' % (settings.MEDIA_ROOT, filename)
+            try:
+                result = imgkit.from_url(url, fullfilename, options=options)
+            except Exception as e:
+                wrong_wkhtmltoimage_error = 'Exit with code 1 due to network error: HostNotFoundError'
+                if wrong_wkhtmltoimage_error in e.message:
+                    logger.info('Неверная ошибка wkhtmltoimage с запятой в урле: %s' % wrong_wkhtmltoimage_error)
+                else:
+                    raise e
+
+            WeatherPicture.objects.create(created_at=now.datetime, city=city, picture=filename)
+
 
 # class MetricTask(app.Task):
 #     queue = 'metric'

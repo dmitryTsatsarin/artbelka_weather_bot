@@ -10,7 +10,7 @@ from django.db.models import F, Value
 from django.db.models.functions import Concat
 from telebot import types, apihelper
 
-from weather_bot_app.helpers import TextCommandEnum, send_mail_to_the_shop, generate_and_send_discount_product, get_query_dict, create_uri, CacheKey, Smile, CacheAsSession, CacheKeyValue, \
+from weather_bot_app.helpers import TextCommandEnum, get_query_dict, create_uri, CacheKey, Smile, CacheAsSession, CacheKeyValue, \
     TsdRegExp, CityEnum
 from weather_bot_app.models import Buyer, Bot, BotBuyerMap, MessageLog, WeatherScheduler
 from weather_bot_app.utils import create_shop_telebot, str2bool

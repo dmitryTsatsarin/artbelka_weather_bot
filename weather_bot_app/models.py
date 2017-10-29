@@ -68,6 +68,12 @@ class EnabledManager(models.Manager):
         return super(EnabledManager, self).get_queryset().filter(is_schedule_enabled=True)
 
 
+class WeatherPicture(models.Model):
+    city = models.CharField(choices=CityEnum.for_choice(), default=CityEnum.MOSCOW, max_length=255)
+    created_at = models.DateTimeField()
+    picture = models.ImageField(null=True)
+
+
 class WeatherScheduler(models.Model):
     buyer = models.OneToOneField(Buyer, related_name='weather_scheduler_rel')
     next_notification_at = models.DateTimeField()
