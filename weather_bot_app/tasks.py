@@ -13,6 +13,7 @@ from weather_bot_app.models import Buyer
 from artbelka_weather_bot.celery import app
 from telebot import apihelper, types
 import json
+import imgkit
 
 #import botan
 from weather_bot_app.utils import create_shop_telebot
@@ -53,7 +54,22 @@ def post_by_schedule(dry_run=False):
         buyer.weather_scheduler_rel.save()
 
 
-class BotBaseTask(app.Task):
+class CommonBaseTask(app.Task):
+    "основа для таски, непривязываясь(!) к конкретному боту"
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        if settings.DEBUG:
+            logger.debug(exc, exc_info=True)
+        else:
+            logger.exception(exc)
+            raise
+
+    def run(self, *args, **kwargs):
+        return self.run_core(*args, **kwargs)
+
+
+class BotBaseTask(CommonBaseTask):
+    "Основа для таски в привязке к боту"
     shop_telebot = None
 
     def run(self, bot_id, *args, **kwargs):
@@ -71,7 +87,6 @@ class BotBaseTask(app.Task):
             else:
                 logger.exception(e)
                 raise
-
 
 
 class CollectorTask(app.Task):
@@ -151,6 +166,30 @@ class PostWeatherTask(BotBaseTask):
                 buyer.is_bot_blocked = True
                 buyer.save()
 
+
+class GetWeatherTask(CommonBaseTask):
+    queue = 'get_weather'
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        wrong_wkhtmltoimage_error = 'Exit with code 1 due to network error: HostNotFoundError'
+        if wrong_wkhtmltoimage_error in exc.message:
+            logger.info('Неверная ошибка wkhtmltoimage с запятой в урле: %s' % wrong_wkhtmltoimage_error)
+            return
+        return super(GetWeatherTask, self).on_failure(exc, task_id, args, kwargs, einfo)
+
+    def run_core(self, buyer_id=None, notification_at=None):
+        options = {
+            'format': 'png',
+            'crop-h': '300',
+            'crop-w': '500',
+            'crop-x': '30',
+            'crop-y': '520',
+            'javascript-delay': '1000',
+        }
+
+        url = 'http://rp5.by/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D0%B2_%D0%9C%D0%B8%D0%BD%D1%81%D0%BA%D0%B5,_%D0%91%D0%B5%D0%BB%D0%B0%D1%80%D1%83%D1%81%D1%8C'
+        result = imgkit.from_url(url, '/tmp/out.png', options=options)
+        return result
 
 # class MetricTask(app.Task):
 #     queue = 'metric'

@@ -13,3 +13,4 @@ raven==6.1.0
 selenium==3.5.0
 factory-boy==2.9.2
 mock==2.0.0
+imgkit==0.1.7
