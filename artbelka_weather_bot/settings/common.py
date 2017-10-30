@@ -164,6 +164,11 @@ CELERYBEAT_SCHEDULE = {
         'task': 'weather_bot_app.tasks.post_by_schedule',
         'schedule': crontab(minute="*"),
     },
+    'GetWeatherTask': {
+        'task': 'weather_bot_app.tasks.GetWeatherTask',
+        'schedule': crontab(minute="0", hour="*"),
+        'options': {'queue': 'get_weather'}
+    }
 }
 
 BOT_REQUEST_TIME_THRESHOLD = 5 # уведомлять о всех запросах дольше 5 секунд
