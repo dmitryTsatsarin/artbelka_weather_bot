@@ -103,16 +103,18 @@ class BotView(object):
         buyer = Buyer.objects.get(telegram_user_id=self.chat_id)
         weather_picture = WeatherPicture.objects.filter(city=buyer.city, created_at__gte=arrow.now().shift(hours=-24).datetime).order_by('-created_at').first()
         if weather_picture:
+            text_out = u'Погода в %s' % weather_picture.city.capitalize()
+            self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
             image_file = weather_picture.get_picture_file()
             self.shop_telebot.send_photo(buyer.telegram_user_id, image_file, reply_markup=self.menu_markup)
         else:
-            text_out = 'К сожалению прогноз погоды для %s не найден' % buyer.city
+            text_out = u'К сожалению прогноз погоды для %s не найден' % buyer.city
             logger.warning(text_out)
             self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
 
 
     def handle_schedule(self, message):
-        text_out = 'Задать расписание автоматического уведомления о погоде (рекомендую на 07:00)'
+        text_out = u'Задать расписание автоматического уведомления о погоде (рекомендую на 07:00)'
 
         buttons = [
             # внимание, нельзя пробрасывать знак "-" в качестве callback_data (telegram ругается)
