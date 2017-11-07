@@ -56,7 +56,7 @@ class BotView(object):
     def __init__(self, token, chat_id):
         self.token = token
         menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        menu_markup.row(TextCommandEnum.WEATHER, TextCommandEnum.SCHEDULE)
+        menu_markup.row(TextCommandEnum.WEATHER)
         menu_markup.row(TextCommandEnum.SETTINGS, TextCommandEnum.QUESTION_TO_ADMIN)
         self.menu_markup = menu_markup
 
