@@ -18,7 +18,7 @@ LOGGING = {
     'disable_existing_loggers': True,
     'root': {
         'level': 'WARNING',
-        'handlers': ['sentry', 'console'],
+        'handlers': ['sentry'],
     },
     'formatters': {
         'verbose': {
@@ -46,16 +46,11 @@ LOGGING = {
     'loggers': {
         'django.db.backends': {
             'level': 'ERROR',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'telebot': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
+            'handlers': ['console', 'sentry'],
             'propagate': False,
         },
         'raven': {
-            'level': 'INFO',
+            'level': 'DEBUG',
             'handlers': ['sentry_self_test_handler'],
             'propagate': False,
         },
@@ -66,29 +61,14 @@ LOGGING = {
         },
         'celery': {
             'level': 'INFO',
-            'handlers': ['console','sentry'],
+            'handlers': ['sentry','console'],
             'propagate': False,
         },
         'weather_bot_app': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'sentry'],
-            'propagate': False,
-        },
-        'weather_bot_app.tasks': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'sentry'],
-            'propagate': False,
-        },
-        'weather_bot_app.admin': {
             'level': 'INFO',
-            'handlers': ['console'],
+            'handlers': ['console', 'sentry'],
             'propagate': False,
-        },
-        'TeleBot': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
+        }
     },
 }
 
