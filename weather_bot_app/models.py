@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import arrow
 from django.db import models
 from django.contrib.auth import get_user_model
 from os.path import splitext
@@ -77,6 +78,10 @@ class WeatherPicture(models.Model):
         image_file = open(self.picture.path)
         return image_file
 
+    @staticmethod
+    def get_weather_picture(buyer):
+        return WeatherPicture.objects.filter(city=buyer.city, created_at__gte=arrow.now().shift(hours=-24).datetime).order_by('-created_at').first()
+
 
 class WeatherScheduler(models.Model):
     buyer = models.OneToOneField(Buyer, related_name='weather_scheduler_rel')
@@ -85,6 +90,10 @@ class WeatherScheduler(models.Model):
 
     objects = models.Manager()
     qs_enabled = EnabledManager()
+
+    def get_tomorrow(self, timezone):
+        tomorrow = arrow.now(tz=timezone).shift(days=1).replace(hour=self.buyer.hour, minute=self.buyer.minute, second=0)
+        return tomorrow
 
 
 class WeatherSchedulerResult(models.Model):
@@ -96,6 +105,7 @@ class WeatherSchedulerResult(models.Model):
 
     def __unicode__(self):
         return u'%s' % self.id
+
 
 
 class BotAdministratorProfile(models.Model):

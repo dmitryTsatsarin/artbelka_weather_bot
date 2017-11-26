@@ -1,23 +1,21 @@
 # -*- coding: utf-8 -*-
+import json
 import logging
 
 import arrow
+import imgkit
 import telebot as telebot_lib
 from celery import shared_task
 from django.conf import settings
+from telebot import apihelper
 
+from artbelka_weather_bot.celery import app
 from weather_bot_app.bot_routing import initialize_bot_with_routing2
 from weather_bot_app.helpers import CityEnum
-from weather_bot_app.logic import send_schedule_product
-from weather_bot_app.models import Bot, WeatherScheduler, WeatherSchedulerResult, WeatherPicture
+from weather_bot_app.models import Bot, WeatherSchedulerResult, WeatherPicture
 from weather_bot_app.models import Buyer
-from artbelka_weather_bot.celery import app
-from telebot import apihelper, types
-import json
-import imgkit
-
-#import botan
-from weather_bot_app.utils import create_shop_telebot
+# import botan
+from weather_bot_app.utils import create_shop_telebot, get_menu
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +48,11 @@ def post_by_schedule(dry_run=False):
             buyer_id=buyer.id,
             notification_at=notification_at,
         ))
+
         logger.info(u'Запущен post_by_schedule к buyer=(%s, %s)' % (buyer.id, buyer.full_name))
-        buyer.weather_scheduler_rel.next_notification_at = arrow.get(notification_at).shift(days=1).datetime
+        timezone = CityEnum.get_time_zone(buyer.city)
+        tomorrow = buyer.weather_scheduler_rel.get_tomorrow(timezone)
+        buyer.weather_scheduler_rel.next_notification_at = tomorrow.datetime
         buyer.weather_scheduler_rel.save()
 
 
@@ -139,12 +140,17 @@ class PostWeatherTask(BotBaseTask):
     queue = 'post_weather'
 
     def send_weather(self, buyer):
-        text_out = u'Отправка погоды. Бла бла бла'
-
-        #image_file = postponed_post.get_400x400_picture_file()
-        caption = u'%s' % text_out # добавить еще больше текста сюда
-        #self.shop_telebot.send_photo(buyer.telegram_user_id, image_file, caption=caption, reply_markup=markup, disable_notification=False)
-        self.shop_telebot.send_message(buyer.telegram_user_id, caption)
+        weather_picture = WeatherPicture.get_weather_picture(buyer)
+        chat_id = buyer.telegram_user_id
+        if weather_picture:
+            text_out = u'Доброе утро. Погода в %s' % weather_picture.city.capitalize()
+            self.shop_telebot.send_message(chat_id, text_out, reply_markup=get_menu())
+            image_file = weather_picture.get_picture_file()
+            self.shop_telebot.send_photo(chat_id, image_file, reply_markup=get_menu())
+        else:
+            text_out = u'К сожалению прогноз погоды для %s не найден' % buyer.city
+            logger.warning(text_out)
+            self.shop_telebot.send_message(chat_id, text_out, reply_markup=self.menu_markup)
 
     def run_core(self, buyer_id=None, notification_at=None):
         logger.info(u'PostWeatherTask. Start. buyer_id=%s, notification_at=%s' % (buyer_id, notification_at))

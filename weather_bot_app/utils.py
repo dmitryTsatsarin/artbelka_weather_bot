@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
 __author__ = 'forward'
-import arrow
-from telebot import TeleBot
-from django.conf import settings
-from django.core.cache import cache
 import logging
-from telebot import types, apihelper
+
+import arrow
+from django.conf import settings
+from telebot import TeleBot
+from telebot import types
 
 logger = logging.getLogger(__name__)
 
@@ -110,3 +110,11 @@ def create_shop_telebot(token):
 def str2bool(v):
   return v.lower() in ("yes", "true")
 
+
+def get_menu():
+    from weather_bot_app.helpers import TextCommandEnum
+
+    menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    menu_markup.row(TextCommandEnum.WEATHER, TextCommandEnum.SCHEDULE)
+    menu_markup.row(TextCommandEnum.SETTINGS, TextCommandEnum.QUESTION_TO_ADMIN)
+    return menu_markup

@@ -4,47 +4,17 @@ import re
 
 import arrow
 from django.conf import settings
-from django.core.cache import cache
-from django.core.mail import send_mail
 from django.db.models import F, Value
 from django.db.models.functions import Concat
 from telebot import types, apihelper
 
-from weather_bot_app.helpers import TextCommandEnum, get_query_dict, create_uri, CacheKey, Smile, CacheAsSession, CacheKeyValue, \
+from weather_bot_app.helpers import TextCommandEnum, get_query_dict, create_uri, CacheAsSession, CacheKeyValue, \
     TsdRegExp, CityEnum
-from weather_bot_app.models import Buyer, Bot, BotBuyerMap, MessageLog, WeatherScheduler, WeatherPicture
-from weather_bot_app.utils import create_shop_telebot, str2bool
+from weather_bot_app.models import Buyer, Bot, BotBuyerMap, WeatherScheduler, WeatherPicture
+from weather_bot_app.utils import create_shop_telebot, str2bool, get_menu
 
 logger = logging.getLogger(__name__)
 to_log = logger.info
-
-
-def send_schedule_product(telegram_user_id, postponed_post):
-    pass
-    # product_id = postponed_post.product_id
-    # post_description = postponed_post.description
-    #
-    # shop_telebot = create_shop_telebot(postponed_post.bot.telegram_token)
-    # if product_id:
-    #     product = Product.objects.filter(id=product_id).get()
-    #
-    #     image_file = product.get_400x400_picture_file()
-    #
-    #     order_command = u'/get_it_%s' % product.id
-    #     caption = u'%s\nНаименование: %s\nОписание: %s\nЦена: %s' % (post_description, product.name, product.description, product.price)
-    #
-    #     markup = types.InlineKeyboardMarkup()
-    #     callback_button = types.InlineKeyboardButton(text=u"Заказать", callback_data=order_command)
-    #     markup.add(callback_button)
-    #
-    #     shop_telebot.send_photo(telegram_user_id, image_file, caption=caption, reply_markup=markup, disable_notification=True)
-    # elif postponed_post.picture:
-    #     image_file = postponed_post.get_400x400_picture_file()
-    #     caption = u'%s\n%s' % (postponed_post.title, post_description)
-    #
-    #     shop_telebot.send_photo(telegram_user_id, image_file, caption=caption, disable_notification=True)
-    # else:
-    #     shop_telebot.send_message(telegram_user_id, text="%s\n%s" % (postponed_post.title, post_description), disable_notification=True)
 
 
 class BotView(object):
@@ -55,10 +25,7 @@ class BotView(object):
 
     def __init__(self, token, chat_id):
         self.token = token
-        menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        menu_markup.row(TextCommandEnum.WEATHER, TextCommandEnum.SCHEDULE)
-        menu_markup.row(TextCommandEnum.SETTINGS, TextCommandEnum.QUESTION_TO_ADMIN)
-        self.menu_markup = menu_markup
+        self.menu_markup = get_menu()
 
         close_product_dialog_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         close_product_dialog_markup.row(u'Закончить разговор')
@@ -101,7 +68,7 @@ class BotView(object):
     def handle_weather_now(self, message):
 
         buyer = Buyer.objects.get(telegram_user_id=self.chat_id)
-        weather_picture = WeatherPicture.objects.filter(city=buyer.city, created_at__gte=arrow.now().shift(hours=-24).datetime).order_by('-created_at').first()
+        weather_picture = WeatherPicture.get_weather_picture(buyer)
         if weather_picture:
             text_out = u'Погода в %s' % weather_picture.city.capitalize()
             self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
@@ -156,17 +123,21 @@ class BotView(object):
                 buyer.save()
 
                 timezone = CityEnum.get_time_zone(buyer.city)
-                tomorrow = arrow.now(tz=timezone).shift(days=1).replace(hour=buyer.hour, minute=buyer.minute, second=0)
+                if arrow.now(tz=timezone) < arrow.now(tz=timezone).replace(hour=buyer.hour, minute=buyer.minute, second=0):
+                    next_alert_at = arrow.now(tz=timezone).replace(hour=buyer.hour, minute=buyer.minute, second=0)
+                else:
+                    next_alert_at = arrow.now(tz=timezone).shift(days=1).replace(hour=buyer.hour, minute=buyer.minute, second=0)
 
-                WeatherScheduler.objects.get_or_create(
+                WeatherScheduler.objects.update_or_create(
                     buyer=buyer,
                     defaults=dict(
-                        next_notification_at=tomorrow.datetime
+                        next_notification_at=next_alert_at.datetime,
+                        is_schedule_enabled=True
                     )
                 )
                 time_f = '%02d:%02d' % (buyer.hour, buyer.minute)
                 text_out = u'Отлично, я запомнил. Ты будешь знать самый последний прогноз погоды в %s каждый день ). \n' \
-                           u'Следующий раз я пришлю свежий прогноз погоды в %s (%s)' % (time_f, tomorrow, buyer.city)
+                           u'Следующий раз я пришлю свежий прогноз погоды в %s (%s)' % (time_f, next_alert_at, buyer.city)
 
                 self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.menu_markup)
 
