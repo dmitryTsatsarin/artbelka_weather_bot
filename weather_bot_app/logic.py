@@ -48,7 +48,9 @@ class BotView(object):
         # create buyer
         bot = Bot.objects.filter(telegram_token=self.token).get()
         try:
-            BotBuyerMap.objects.filter(buyer__telegram_user_id=telegram_user_id, bot=bot).get()
+            bot_buyer_map = BotBuyerMap.objects.filter(buyer__telegram_user_id=telegram_user_id, bot=bot).get()
+            bot_buyer_map.is_blocked_by_user = False
+            bot_buyer_map.save()
         except BotBuyerMap.DoesNotExist as e:
             first_name = message.chat.first_name or ''
             last_name = message.chat.last_name or ''
@@ -317,6 +319,7 @@ class BotView(object):
             if e.result.status_code == 403 and error_msg in e.result.text:
                 buyer = Buyer.objects.filter(telegram_user_id=buyer_chat_id).get()
                 text_out = u'Пользователь %s (id=%s) заблокировал бота' % (buyer.full_name, buyer_chat_id)
+                BotBuyerMap.objects.filter(bot_id=self.bot_id, buyer__telegram_user_id=buyer_chat_id).update(is_blocked_by_user=True)
                 self.shop_telebot.send_message(self.bot_support_chat_id, text=text_out)
     #
     # def _core_get_product_description(self):
