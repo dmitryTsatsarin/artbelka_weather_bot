@@ -12,7 +12,7 @@ from telebot import apihelper
 from artbelka_weather_bot.celery import app
 from weather_bot_app.bot_routing import initialize_bot_with_routing2
 from weather_bot_app.helpers import CityEnum
-from weather_bot_app.models import Bot, WeatherSchedulerResult, WeatherPicture
+from weather_bot_app.models import Bot, WeatherSchedulerResult, WeatherPicture, BotBuyerMap
 from weather_bot_app.models import Buyer
 # import botan
 from weather_bot_app.utils import create_shop_telebot, get_menu
@@ -78,6 +78,7 @@ class BotBaseTask(CommonBaseTask):
         try:
             if Bot.objects.filter(id=bot_id).exists():
                 bot = Bot.objects.filter(id=bot_id).get()
+                self.bot_id = bot.id # нужно иметь обращение к id бота в некоторых ошибках
                 self.shop_telebot = create_shop_telebot(bot.telegram_token)
                 return self.run_core(*args, **kwargs)
             else:
@@ -170,8 +171,7 @@ class PostWeatherTask(BotBaseTask):
             if e.result.status_code == 403 and error_msg in e.result.text:
                 msg = u'Пользователь %s (id=%s) заблокировал бота' % (buyer.full_name, buyer.telegram_user_id)
                 logger.info(msg)
-                buyer.is_bot_blocked = True
-                buyer.save()
+                BotBuyerMap.objects.filter(bot_id=self.bot_id, buyer__telegram_user_id=buyer.telegram_user_id).update(is_blocked_by_user=True)
 
 
 class GetWeatherTask(CommonBaseTask):
