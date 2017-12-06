@@ -58,7 +58,7 @@ class BotAdmin(admin.ModelAdmin):
 
 
 class BotBuyerMapAdmin(admin.ModelAdmin):
-    list_display = ['__str__', 'dialog_with_support']
+    list_display = ['__str__', 'is_blocked_by_user', 'dialog_with_support']
 
 
 class MessageLogAdmin(admin.ModelAdmin):
