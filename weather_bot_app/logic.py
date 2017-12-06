@@ -225,10 +225,11 @@ class BotView(object):
     #     buyer = Buyer.objects.filter(telegram_user_id=self.chat_id).get()
     #     MessageLog.objects.create(message_text=message.text, bot_id=self.bot_id, buyer=buyer)
     #
-    #
-    # def handle_answer_from_bot_support(self, message):
-    #     self._core_answer_from_bot_support(message)
-    #
+
+
+    def handle_answer_from_bot_support(self, message):
+         self._core_answer_from_bot_support(message)
+
     def handle_question_to_bot_support(self, message):
         self._core_question_to_bot_support(message)
     #
@@ -241,10 +242,10 @@ class BotView(object):
     #     self._start_question_dialog(product_id)
     #
     #     self.shop_telebot.send_message(self.chat_id, text_out, reply_markup=self.close_product_dialog_markup)
-    #
-    # def handle_close_question_dialog(self, message):
-    #     self._close_question_dialog()
-    #
+
+    def handle_close_question_dialog(self, message):
+        self._close_question_dialog()
+
 
     def _start_question_dialog(self, message):
         if message.chat.id == self.bot_support_chat_id:
