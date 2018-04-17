@@ -1,6 +1,11 @@
 
 	
 **Регламент первой установки**
+-пробросить симлинк nginx конфигурации в sites-enabled
+
+
+
+
 1) обновить исходники
 2) установить пакеты через pip
 3) выполнить миграции
@@ -19,3 +24,6 @@ more_command = create_uri(TextCommandEnum.GET_CATALOG, catalog_id=catalog_id, of
 
 query_dict = get_query_dict(call_data)
 catalog_id_str = query_dict.get('catalog_id')
+
+
+

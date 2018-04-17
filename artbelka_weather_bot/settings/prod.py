@@ -77,7 +77,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'weather_bot',
-        'USER': 'webrunner',
+        'USER': 'postgres',
         'PASSWORD': 'ZHkv8GD4Zab2g4HHNqPn',
         'HOST': 'localhost',
         'PORT': 5432,
