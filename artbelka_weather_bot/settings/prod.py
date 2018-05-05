@@ -80,7 +80,7 @@ DATABASES = {
         'USER': 'postgres',
         'PASSWORD': 'ZHkv8GD4Zab2g4HHNqPn',
         'HOST': 'localhost',
-        'PORT': 5432,
+        'PORT': 5434,
         'TEST': {
             'NAME': 'weather_bot_test',
         },
